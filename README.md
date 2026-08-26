@@ -13,7 +13,7 @@
 
 **输入任何故事、电影或场景，AI 为你生成绝美的 Emoji 电影卡片**
 
-[🌐 在线体验](https://wangzi5151.github.io/emoji-cinema/) · [📱 下载 APK](https://github.com/wangzi5151/emoji-cinema/releases/download/v1.0.0/Emoji.Cinema.v1.0.0.apk) · [⭐ Star](https://github.com/wangzi5151/emoji-cinema/stargazers) · [🍴 Fork](https://github.com/wangzi5151/emoji-cinema/fork)
+[🌐 在线体验](https://wangzi5151.github.io/emoji-cinema/) · [📱 下载 APK](https://github.com/wangzi5151/emoji-cinema/releases/download/v1.1.0/Emoji.Cinema.v1.1.0.apk) · [⭐ Star](https://github.com/wangzi5151/emoji-cinema/stargazers) · [🍴 Fork](https://github.com/wangzi5151/emoji-cinema/fork)
 
 </div>
 
@@ -40,7 +40,7 @@
 
 ## 📱 Android APK
 
-[![下载 APK](https://img.shields.io/badge/下载-Emoji.Cinema.v1.0.0.apk-blue?style=for-the-badge&logo=android)](https://github.com/wangzi5151/emoji-cinema/releases/download/v1.0.0/Emoji.Cinema.v1.0.0.apk)
+[![下载 APK](https://img.shields.io/badge/下载-Emoji.Cinema.v1.1.0.apk-blue?style=for-the-badge&logo=android)](https://github.com/wangzi5151/emoji-cinema/releases/download/v1.1.0/Emoji.Cinema.v1.1.0.apk)
 
 | 指标 | 数值 |
 |------|------|
