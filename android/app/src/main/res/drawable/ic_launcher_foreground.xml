@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportHeight="108"
+    android:viewportWidth="108">
+    <!-- Dark background circle -->
+    <path
+        android:fillColor="#1a1a2e"
+        android:pathData="M54,54m-42,0a42,42 0,1 1,84 0a42,42 0,1 1,-84 0" />
+    <!-- Clapperboard body -->
+    <path
+        android:fillColor="#6c5ce7"
+        android:pathData="M30,48L78,48L78,72C78,74.2 76.2,76 74,76L34,76C31.8,76 30,74.2 30,72Z" />
+    <!-- Clapperboard top (hinged part) -->
+    <path
+        android:fillColor="#a29bfe"
+        android:pathData="M30,42L78,42L78,48L30,48Z" />
+    <!-- Diagonal stripes on clapperboard -->
+    <path
+        android:fillColor="#1a1a2e"
+        android:pathData="M34,42L42,48L34,48Z" />
+    <path
+        android:fillColor="#1a1a2e"
+        android:pathData="M46,42L54,48L46,48Z" />
+    <path
+        android:fillColor="#1a1a2e"
+        android:pathData="M58,42L66,48L58,48Z" />
+    <path
+        android:fillColor="#1a1a2e"
+        android:pathData="M70,42L78,48L70,48Z" />
+    <!-- Film reel circle left -->
+    <path
+        android:fillColor="#ffd700"
+        android:pathData="M38,62m-5,0a5,5 0,1 1,10 0a5,5 0,1 1,-10 0" />
+    <!-- Film reel circle right -->
+    <path
+        android:fillColor="#ffd700"
+        android:pathData="M70,62m-5,0a5,5 0,1 1,10 0a5,5 0,1 1,-10 0" />
+    <!-- Film strip holes -->
+    <path
+        android:fillColor="#1a1a2e"
+        android:pathData="M38,55m-1.5,0a1.5,1.5 0,1 1,3 0a1.5,1.5 0,1 1,-3 0" />
+    <path
+        android:fillColor="#1a1a2e"
+        android:pathData="M38,69m-1.5,0a1.5,1.5 0,1 1,3 0a1.5,1.5 0,1 1,-3 0" />
+    <path
+        android:fillColor="#1a1a2e"
+        android:pathData="M70,55m-1.5,0a1.5,1.5 0,1 1,3 0a1.5,1.5 0,1 1,-3 0" />
+    <path
+        android:fillColor="#1a1a2e"
+        android:pathData="M70,69m-1.5,0a1.5,1.5 0,1 1,3 0a1.5,1.5 0,1 1,-3 0" />
+    <!-- Film strip connector -->
+    <path
+        android:fillColor="#fd79a8"
+        android:pathData="M43,60L65,60L65,64L43,64Z" />
+    <!-- Center star/play button -->
+    <path
+        android:fillColor="#ffffff"
+        android:pathData="M52,57L60,62L52,67Z" />
+</vector>

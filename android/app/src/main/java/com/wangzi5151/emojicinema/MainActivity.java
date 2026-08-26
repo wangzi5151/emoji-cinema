@@ -1,4 +1,4 @@
-package com.wangzi5151.aiwritingstudio;
+package com.wangzi5151.emojicinema;
 
 import com.getcapacitor.BridgeActivity;
 
