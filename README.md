@@ -13,7 +13,7 @@
 
 **输入任何故事、电影或场景，AI 为你生成绝美的 Emoji 电影卡片**
 
-[🌐 在线体验](https://wangzi5151.github.io/emoji-cinema/) · [⭐ Star](https://github.com/wangzi5151/emoji-cinema/stargazers) · [🍴 Fork](https://github.com/wangzi5151/emoji-cinema/fork)
+[🌐 在线体验](https://wangzi5151.github.io/emoji-cinema/) · [📱 下载 APK](https://github.com/wangzi5151/emoji-cinema/releases/download/v1.0.0/Emoji.Cinema.v1.0.0.apk) · [⭐ Star](https://github.com/wangzi5151/emoji-cinema/stargazers) · [🍴 Fork](https://github.com/wangzi5151/emoji-cinema/fork)
 
 </div>
 
@@ -37,6 +37,24 @@
 | 📲 **一键分享** | 下载 PNG 卡片 / 复制 Emoji / 分享到 Twitter |
 | 🧠 **智能匹配** | 内置 200+ 热门场景的 Emoji 映射，自动理解你的输入 |
 | 🌈 **无限可能** | 支持任何语言输入，创意无限 |
+
+## 📱 Android APK
+
+[![下载 APK](https://img.shields.io/badge/下载-Emoji.Cinema.v1.0.0.apk-blue?style=for-the-badge&logo=android)](https://github.com/wangzi5151/emoji-cinema/releases/download/v1.0.0/Emoji.Cinema.v1.0.0.apk)
+
+| 指标 | 数值 |
+|------|------|
+| 文件大小 | 3.7 MB |
+| 最低 Android 版本 | Android 7.0 (API 24) |
+| 构建工具 | Capacitor 6 + Gradle |
+
+**安装步骤：**
+1. 下载 APK 文件
+2. 在手机设置中允许「安装未知来源应用」
+3. 点击 APK 文件安装
+4. 打开 Emoji Cinema 开始使用
+
+---
 
 ## 🚀 快速开始
 
