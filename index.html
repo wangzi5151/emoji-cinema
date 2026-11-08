@@ -185,6 +185,10 @@ textarea:focus{border-color:var(--accent)}
 }
 .toast.show{transform:translateX(-50%) translateY(0)}
 .hidden{display:none!important}
+.empty-cards{color:var(--text2);font-size:13px;padding:20px;text-align:center}
+.story-actions{margin-top:10px;display:flex;gap:6px;justify-content:center}
+.story-actions button{font-size:11px;padding:4px 8px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text2);cursor:pointer;font-family:inherit}
+.story-actions button:hover{border-color:var(--accent);color:var(--text)}
 @media(max-width:480px){
   .app{padding:12px 12px 60px}
   .input-section{padding:16px}
@@ -200,7 +204,7 @@ textarea:focus{border-color:var(--accent)}
   <header>
     <div class="logo">🎬</div>
     <h1>Emoji Cinema</h1>
-    <p class="subtitle">输入任何故事、电影或场景，AI 为你生成绝美的表情电影卡片</p>
+    <p class="subtitle">输入任何故事、电影或场景，自动匹配生成绝美的表情电影卡片</p>
   </header>
 
   <div class="input-section">
@@ -246,6 +250,7 @@ textarea:focus{border-color:var(--accent)}
     </div>
     <div class="share-row">
       <button class="share-btn" onclick="downloadCard()">📥 下载卡片</button>
+      <button class="share-btn" onclick="shareStory()">📤 系统分享</button>
       <button class="share-btn twitter" onclick="shareTwitter()">🐦 分享到 Twitter</button>
       <button class="share-btn" onclick="copyEmojis()">📋 复制 Emoji</button>
     </div>
@@ -253,12 +258,18 @@ textarea:focus{border-color:var(--accent)}
 
   <div id="loading" class="hidden" style="text-align:center">
     <div class="loading-dots"><span></span><span></span><span></span></div>
-    <div style="color:var(--text2);font-size:14px">AI 正在构思你的 Emoji 电影...</div>
+    <div style="color:var(--text2);font-size:14px">正在匹配你的 Emoji 电影...</div>
   </div>
 
   <div class="gallery">
     <div class="gallery-title">🔥 热门 Emoji 电影</div>
     <div class="gallery-grid" id="galleryGrid"></div>
+  </div>
+
+  <div class="gallery">
+    <div class="gallery-title">📚 我的故事 <span style="font-size:12px;color:var(--text2);font-weight:400">本地保存</span></div>
+    <div class="gallery-grid" id="storiesGrid"></div>
+    <div class="empty-cards hidden" id="emptyStories">还没有保存的故事，生成后会出现在这里</div>
   </div>
 
   <div class="stats">
@@ -267,11 +278,11 @@ textarea:focus{border-color:var(--accent)}
       <div class="stat-label">已生成</div>
     </div>
     <div class="stat">
-      <div class="stat-num" id="totalStories">200+</div>
-      <div class="stat-label">故事库</div>
+      <div class="stat-num" id="totalStories">178</div>
+      <div class="stat-label">场景关键词</div>
     </div>
     <div class="stat">
-      <div class="stat-num">50+</div>
+      <div class="stat-num" id="totalEmojiKinds">0</div>
       <div class="stat-label">Emoji 种类</div>
     </div>
   </div>
@@ -285,313 +296,169 @@ textarea:focus{border-color:var(--accent)}
 <div class="toast" id="toast"></div>
 <canvas id="canvas" style="display:none"></canvas>
 
+<script src="./meme-data.js"></script>
+<script src="./logic.js"></script>
 <script>
-const EMOJI_DB = {
-  emotion: {
-    happy:'😀😁😆🥹😅🤣😂🙂🫠😊😇🥰😍🤩😘😗😚😙🥲😋😛😜🤪😝🤑🤗🤭🫢🫣🤫🤔🫡🤐🤨😐🫤😑😶🫥😏😒🙄😬🤥🫨😌😔😪🤤😴😷🤒🤕🤢🤮🥴😵🤯🤠🥳🥸😎🤓🧐😕🫤😟🙁☹️😮😯😲😳🥺🥹😦😧😨😰😥😢😭😱😖😣😞😓😩😫🥱😤😡😠🤬',
-    love:'❤️🧡💛💚💙💜🖤🤍🤎💔❣️💕💞💓💗💖💘💝💟🫶',
-    sad:'😢😭😤😡🤬🥺😔😞💔🥀😿😢😭😤',
-    fear:'😨😱😰😥🫣🙀😿',
-    cool:'😎🤠🥸🤓🤙🫡',
-    fire:'🔥💥⚡✨💫🌟⭐🔥'
-  },
-  people: {
-    man:'👨👩🧑👱👲👳🧕👮👷💂🕵️👩‍🚀🧑‍🔬👨‍🎨🧑‍💻👩‍🚒',
-    child:'👦👧🧒👶🧒',
-    group:'👥👦👧👫👬👭🧑‍🤝‍🧑',
-    hero:'🦸🦹🧙🧝🥷💂'
-  },
-  animals: {
-    cat:'🐱🐈🐈‍⬛😿😹🙀😽😼仙境',
-    dog:'🐶🐕🦮🐩🐕‍🦺🖖',
-    bird:'🐦🦅🦆🦉🦚🦜🕊️',
-    wild:'🦁🐯🐆🐺🦊🐻🐼🐨🐯',
-    sea:'🐋🐳🐙🦑🐡🐠🐟🐬🦈🦭',
-    insect:'🦋🐛🐝🐞🐜🦗🕷️'
-  },
-  nature: {
-    plant:'🌿🍀🌱🌲🌳🌴🌵🎋🎍',
-    flower:'🌸💐🌺🌻🌹🌷🪷',
-    weather:'☀️🌤️⛅🌥️☁️🌦️🌧️⛈️🌩️🌨️❄️☃️⛄🌊💧💦🫧',
-    space:'🌍🌎🌏🪐⭐🌟✨💫🌌🚀🛸',
-    element:'🔥💧🌊💨🌪️🌈'
-  },
-  objects: {
-    tech:'💻🖥️📱📲⌨️🖱️💡🔌🔋📡',
-    weapon:'⚔️🗡️🛡️🔫💣🧨🎯🏹',
-    food:'🍕🍔🍟🌭🍿🥓🥚🍳🧇🥞🧈🍞🥐🥨🥯',
-    drink:'☕🍵🍺🍷🥂🥃🧃🥤🧋',
-    music:'🎵🎶🎸🥁🎹🎺🎷🎤🎧',
-    transport:'🚗🚕🚌🏎️🚓🚑🚒🚐🛻🚚🚛🚜✈️🚂🚀🛸'
-  },
-  places: {
-    building:'🏠🏢🏥🏫🏰🗼🗽⛪🕌',
-    city:'🏙️🌆🌇🌉🌃',
-    nature:'🏔️⛰️🌋🏕️🏖️🏜️🏝️',
-    space2:'🚀🛸🌌🌍🌎'
-  },
-  actions: {
-    motion:'🏃🚶💃🕺🧖🛀🛌🧎🙇🧎',
-    fighting:'⚔️👊💥💪🦾🤜🤛',
-    thinking:'🤔💭🧠💡📖',
-    creation:'🎨✏️🛠️🔨⚙️🧪🔬',
-    destruction:'💥💣🔥☄️🌋💫'
-  },
-  time: {
-    past:'⏪🕰️📜🏛️🕯️',
-    present:'⏰📅📍',
-    future:'🔮🚀⚡⏩🌆'
-  },
-  symbols: {
-    good:'✅⭕🏆🥇🎯💎👑🎪',
-    bad:'❌⛔🚫💀☠️👎😈👿',
-    magic:'✨🔮⭐💫🌟🎆🎇'
-  }
-};
+const ML = window.MemeLogic;
+const EMOJI_DB = ML.EMOJI_DB;
+const STORY_PATTERNS = ML.STORY_PATTERNS;
+const GALLERY_DATA = ML.GALLERY_DATA;
 
-const STORY_PATTERNS = {
-  '泰坦尼克号': '🚢🇮🇨👨‍👩‍👧‍👦💎❄️🌊💀',
-  'titanic': '🚢🇮🇨👨‍👩‍👧‍👦💎❄️🌊💀',
-  '太空': '👨‍🚀🚀🌍🌌⭐🛸💫',
-  '太空旅行': '👨‍🚀🚀🌍🌌⭐🛸💫',
-  '分手': '💔😢🌧️🚶‍♂️😔🫥💭',
-  '期末考试': '📚😰☕🌙📝✍️🤞',
-  '打工人': '⏰🚇💻📊🍜😈🫠',
-  '程序员': '💻🐛😴☕🍕🚀💡',
-  '龙': '🐉🔥⚔️🏰👑🛡️💎',
-  '末日': '☢️🏚️🚶‍♂️💀🌅🫥🧟',
-  '爱情': '💕😍🥰💐🌹💓✨',
-  '恐怖': '👻🏚️😱🔪🩸🌑💀',
-  '喜剧': '😂🤣🎭🤡🎉🥳🎊',
-  '侦探': '🔍🕵️🔎🧩❓📰🎯',
-  '机器人': '🤖⚙️🧠💡⚡🦾💻',
-  '魔法': '🧙‍♂️✨🔮⚡📖🌌💫',
-  '忍者': '🥷⚔️🌙💀🗡️🫥暗',
-  '海盗': '🏴‍☠️🚢⚓🗺️💰⚔️🦜',
-  '超级英雄': '🦸💪⚡🔥🛡️🏆🦹',
-  '恐龙': '🦕🦖🌋🔥💨🌿🦴',
-  '冒险': '🗺️🧭⚔️🏔️💎🏰🐉',
-  '美食': '🍕👨‍🍳🔥😋🤤🎉🍽️',
-  '旅行': '✈️🗺️🧳📸🌅🏨🎒',
-  '足球': '⚽🏆🏃‍♂️🎉👏🥇💪',
-  '篮球': '🏀🏆💪🔥🎯👏🏃‍♂️',
-  '游戏': '🎮🕹️⚡🏆💎🎯🔥',
-  '音乐': '🎵🎸🎤🎧🎶🎹🎺',
-  '电影': '🎬🎞️🍿🎥⭐🎭👻',
-  '画画': '🎨✏️🖼️🖌️💭🌈✨',
-  '雨天': '🌧️☔💧🌫️😢🚶‍♂️🫥',
-  '春天': '🌸🌷🌺🌿🦋☀️🌈',
-  '秋天': '🍂🍁🎃🌙🌾🍃💫',
-  '冬天': '❄️⛄🌨️⛷️🎄☕🧣',
-  '夏天': '☀️🏖️🍦西瓜🌊😎🍹',
-  '生日': '🎂🎈🎉🎁🥳🕯️💫',
-  '婚礼': '💒👰🤵💐🥂 ring💍🎉',
-  '毕业': '🎓📚👨‍🎓🎉🏆✨🎊',
-  '日出': '🌅☀️🌄🎨✨🌅🌅',
-  '日落': '🌇🌅🎨💫✨🌆🌄',
-  '赛博朋克': '🌃🤖⚡💀🌆🦾👁️',
-  '黑客': '💻🔓⌨️🕵️‍♂️🔐💀⚡',
-  'AI': '🤖🧠💡⚡💻🌐🔮',
-  '人工智能': '🤖🧠💡⚡💻🌐🔮',
-  'AI觉醒': '🤖👁️🧠⚡🔓🌍💫',
-  '觉醒': '👁️⚡💡🧠🔓💫🌟',
-  '剑': '⚔️🗡️🛡️💪🔥🏆',
-  '枪战': '🔫💥💥💣🏃‍♂️🎯💀',
-  '赛车': '🏎️💨🏁🏆🔥⚡🎯',
-  '拳击': '🥊💥💪🏆👊🔥🎯',
-  '咖啡': '☕😴💻📖📝💡✨',
-  '猫': '🐱😺🐟🐠🐾💤✨',
-  '狗': '🐕🦮 bones骨头❤️🎉🐾',
-  '失恋': '💔😢🌧️🚶‍♂️🫥💭😔',
-  '考试': '📚😰☕🌙📝✍️🤞',
-  '加班': '⏰💻📊🌃😈🫠😴',
-  '约会': '💕🌹✨🥂😏💫💐',
-  '战争': '⚔️💥💣🔫🏰💀🗡️',
-  '和平': '🕊️☮️🌈☀️🤝💫✨',
-  '梦': '💭😴🌟☁️🌈💫✨🫥',
-  '时间': '⏰⏳🕰️⌛💫⏩⏪',
-  '友谊': '🤝💛🫶🎉😄💫✨',
-  '家': '🏠👨‍👩‍👧‍👦❤️🐕🛋️💫✨',
-  '海洋': '🌊🐋🐙🪸🐠🏖️💙',
-  '森林': '🌲🌳🌿🐾🦁🏕️✨',
-  '沙漠': '🏜️☀️🐪🌵💫✨🫥',
-  '冰': '❄️🧊⛄🏔️🏔️💙✨',
-  '火': '🔥💥🌋☀️⭐💫✨',
-  '风': '💨🌪️🍃🌫️🌬️🪁✨',
-  '水': '💧🌊💦🫧🏊💧✨',
-  '食物': '🍕🍔🍟🌭🍦🍰🎂',
-  '运动': '⚽🏀🎾🏐🏆💪🔥',
-  '学习': '📚📖💡🧠🎓✏️✨',
-  '工作': '💼📊🖥️☕📈💰🏢',
-  '休闲': '🏖️☀️😎🍹📚🎶💫',
-  '科技': '💻🤖⚡🔬🧪💡🌐',
-  '未来': '🚀🛸🌆🤖⚡💫✨🔮',
-  '过去': '📜🏛️🕯️🏺📖⏳💫',
-  '魔法世界': '🧙‍♂️🔮✨🏰🐉💫📖',
-  '星球大战': '🌌⚔️🚀💥🤖⭐🦸',
-  '哈利波特': '🧙‍♂️⚡🔮📚🦉🏰✨',
-  '西游记': '🐒🍑🏰👹🔥⚔️💫',
-  '三国演义': '⚔️🏯👑🐉🗡️📜🔥',
-  '红楼梦': '🏯💐📖💔🎭✨💫',
-  '水浒传': '⚔️🌲🗿💪🔥🏆🗡️',
-  '三体': '🌐🪐🔭💫⚡🧠🌌',
-  '流浪地球': '🌍🚀🔥🧊💫🌟🌌',
-  '黑客帝国': '💊💊🔢🤖💚⚡🌐',
-  '肖申克的救赎': '🔒🔨🌧️🕊️🌊🌅💫',
-  '阿甘正传': '🏃‍♂️🍫🍯💡🇺🇸✨💫',
-  '千与千寻': '🚂👴🐉🌊🏮✨💫',
-  '龙猫': '🐲🌳🌧️👧🌙✨💫',
-  '冰雪奇缘': '❄️👸⛄💫🎶🏔️✨',
-  '狮子王': '🦁👑🌅🌍💫🎵✨',
-  '变形金刚': '🤖⚡🚗💥🔧💫✨',
-  '侏罗纪公园': '🦕🦖🌴💥🏃‍♂️✨',
-  '海底总动员': '🐠🌊🐡🦈🫧✨💫',
-  '功夫熊猫': '🐼🥋🍜💫🐉✨🎉',
-  '蜘蛛侠': '🕷️🦸🏙️💡✨🕸️💫',
-  '蝙蝠侠': '🦇🌃⚡🔍🦹💜✨',
-  '超人': '🦸‍♂️💪⚡🔵🔴✨💫',
-  '钢铁侠': '🤖🦾❤️⚡💎✨💫',
-  '灭霸': '💜👊💀🧬🦸‍♂️⚔️💫',
-  '复仇者联盟': '🦸‍♂️⚡💥🌍💪🦹✨',
-  '黑客帝国': '💊💊🔢🤖💚⚡🌐',
-  '爱情故事': '💕🌹😭💔✨🥂💫',
-  '恐怖故事': '👻🏚️😱🔪🩸🌑💀',
-  '搞笑': '😂🤣🤡🎉🥳🎊💫',
-  '悲伤': '😢🌧️💔😔🫥🌙💫',
-  '开心': '😄🎉🥳✨💫🎈🎊',
-  '生气': '😡💢🔥👹👺💢💥',
-  '无聊': '😴🥱⏰📱🫥💫💤',
-  '孤独': '🚶‍♂️🌧️🫥💭🌙💫',
-  '希望': '🌅✨💡🌟💫🌈🙏',
-  '绝望': '😔🌧️💀🫥🌑⛓️💫',
-  '成功': '🏆🎉🎊💪🥇✨💫',
-  '失败': '❌😔🌧️💔💫📉',
-  '战斗': '⚔️💥🔥💪🎯🗡️🏆',
-  '探索': '🗺️🧭🔭⛵🏔️💫✨',
-  '创造': '🎨💡🛠️✨🔧💫🌟',
-  '毁灭': '💥💣🔥☄️💀☢️💫',
-  '重生': '🌱💫✨🌅🔄💫🌟',
-  '旅行': '✈️🗺️🧳📸🌅🎒💫',
-  '美食冒险': '🍕🔥👨‍🍳😋🎉🍽️✨',
-  '音乐冒险': '🎵🎸🎤💫🎶🎹✨',
-  '游戏人生': '🎮🎲🃏🏆💎🎯✨',
-  '代码人生': '💻🐛☕💡🚀✨💫',
-  '黑客帝国': '💊💊🔢🤖💚⚡🌐',
-  '末日后': '☢️🏚️🚶‍♂️💀🌅🫥🧟',
-  '龙与地下城': '🐉⚔️🎲🏰🧙‍♂️🛡️✨',
-  '赛博朋克2077': '🌃🤖⚡💀🌆🦾👁️',
-  '原神': '⚡🌸⚔️🌍✨🎭💫',
-  '我的世界': '⛏️🧱🌲⛏️👥🎯✨',
-  '动物森友会': '🏝️🎣🏝️🎉🐾💫✨',
-  '宝可梦': '🔴⚡⭐🏆✨🐾💫',
-  '塞尔达': '⚔️🏰🌟🗡️🛡️✨💫',
-  '分手后第一次偶遇': '😳💔🫥🚶‍♂️🌧️💫',
-  '第一次做饭': '👨‍🍳🔥😅🍕💀👍',
-  '第一次约会': '💕 nervous😅🌹✨🥂',
-  '养猫': '🐱🐾💤 tuna fish  tuna fishBox📦✨',
-  '养狗': '🐕🦮❤️ bones park 🦴🎉',
-  '追星': '⭐😍📸🎤🎉💫✨',
-  '考研': '📚😰☕🌙📝🤞✨',
-  '创业': '💡💰🚀📈💪🏆✨',
-  '中彩票': '💰🎉🥳🎊💫✨🎆',
-  '升职加薪': '📈💰🎉👔🏆✨💫',
-  '退休': '🏖️☀️🎣😌🌺💫✨',
-  '穿越': '⏰🌀🌪️🏰🐉💫✨',
-  '时间旅行': '⏰🌀🚀💫🌟✨🔮',
-  '平行宇宙': '🌌🌀💫🔮✨🌈⚡',
-  '超能力': '💪⚡🧠✨💫🦹🔥',
-  '异世界': '🌀🏰⚔️🐉✨💫🌟',
-  '修仙': '🧘‍♂️⚡💫🌟✨🔮⚔️',
-  '末世生存': '🏚️🏃‍♂️💀🔫🧟✨💫',
-  '废土': '🏜️💀🔧🚗☢️✨💫',
-  '蒸汽朋克': '⚙️🛩️🏰🔭🔩💫✨',
-  '太空歌剧': '🌌🚀⚔️👽💫✨🎭',
-  '机甲': '🤖⚡💪🦾⚔️🔥✨',
-  '怪兽': '🦕💥🏙️🦖⚡💫✨',
-  '鬼屋': '👻🏚️😱🕯️💀🌑✨',
-  '密室逃脱': '🔐🧩🔑😰🏃‍♂️✨',
-  '狼人杀': '🐺🌕😱🔪💀✨💫',
-  '吃鸡': '🍗🏆🔫🏃‍♂️💥✨',
-  'MOBA': '⚔️🏰💪🏆✨💫',
-  'RPG': '⚔️🛡️🏰📜🗡️✨💫',
-  'FPS': '🔫💥🎯🏆💀✨',
-  'SLG': '🏰⚔️👑🌍💰✨',
-  'Gacha': '🎰💎⭐✨💫🎯',
-  '吃瓜': '🍉👀😏八卦✨💫',
-  '摸鱼': '🐟😴💻🐟💫✨',
-  '内卷': '📈😰📚💪💫✨',
-  '躺平': '🛏️😴💤🫥💫✨',
-  '社恐': '🫥😰🏠💭💭✨',
-  '社牛': '🎉🗣️👋😄💫✨',
-  '恋爱': '💕😍🥰💐💓✨',
-  '暗恋': '💜👀💭😔🫥✨',
-  '表白': '❤️🌹 nervous 💍✨',
-  '求婚': '💍跪下❤️😭🎉✨',
-  '单身': '🚶‍♂️🏠💤📱🫥✨',
-  '催婚': '👨‍👩‍👦💬😰🏃‍♂️🏠✨',
-  '带娃': '👶🍼😴😭🧸💫✨',
-  '退休生活': '🎣🌺🏖️☀️😌✨',
-};
-
-const GALLERY_DATA = [
-  {text:'泰坦尼克号',emojis:'🚢❤️👨‍👩‍👧‍👦💎❄️🌊💀'},
-  {text:'复仇者联盟终局之战',emojis:'🦸‍♂️⚡💥🌍💪🦹✨'},
-  {text:'黑客帝国',emojis:'💊💊🔢🤖💚⚡🌐'},
-  {text:'人工智能觉醒',emojis:'🤖👁️🧠⚡🔓🌍💫'},
-  {text:'程序员的一天',emojis:'💻🐛😴☕🍕🚀'},
-  {text:'打工人的一天',emojis:'⏰🚇💻📊🍜😈'},
-  {text:'龙与地下城冒险',emojis:'🐉⚔️🎲🏰🧙‍♂️🛡️'},
-  {text:'末日后人类最后的晚餐',emojis:'☢️🏚️🍽️💀🌅🧟'},
-  {text:'赛博朋克城市',emojis:'🌃🤖⚡💀🌆🦾'},
-  {text:'千与千寻',emojis:'🚂👴🐉🌊🏮✨'},
-  {text:'功夫熊猫',emojis:'🐼🥋🍜💫🐉🎉'},
-  {text:'三体',emojis:'🌐🪐🔭💫⚡🧠'},
-  {text:'分手后第一次偶遇',emojis:'😳💔🫥🚶‍♂️🌧️💫'},
-  {text:'猫咪太空旅行',emojis:'🐱🚀🌌👨‍🚀🥧💥'},
-  {text:'考研人的深夜',emojis:'📚😰☕🌙📝🤞'},
-];
-
-let totalGen = parseInt(localStorage.getItem('ec_count')||'0');
+const STORY_KEY = 'ec_stories';
+const MAX_STORIES = 30;
+let totalGen = parseInt(localStorage.getItem('ec_count') || '0', 10);
 let currentEmojis = '';
+let currentStoryText = '';
+let stories = loadStories();
 
-function init(){
-  document.getElementById('totalGenerated').textContent = totalGen;
-  renderGallery();
-  const textarea = document.getElementById('input');
-  textarea.addEventListener('input',()=>{
-    document.getElementById('count').textContent = textarea.value.length;
-  });
+function escapeHtml(value) {
+  return String(value == null ? '' : value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
-function renderGallery(){
-  const grid = document.getElementById('galleryGrid');
-  grid.innerHTML = GALLERY_DATA.map(g=>`
-    <div class="gallery-item" onclick="loadGallery('${g.text}','${g.emojis}')">
-      <div class="gallery-emojis">${g.emojis}</div>
-      <div class="gallery-label">${g.text}</div>
+function loadStories() {
+  try {
+    const raw = localStorage.getItem(STORY_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter(item => item && typeof item.text === 'string' && typeof item.emojis === 'string')
+      .slice(0, MAX_STORIES)
+      .map(item => ({
+        id: typeof item.id === 'string' && item.id ? item.id : generateStoryId(),
+        text: item.text,
+        emojis: item.emojis,
+        createdAt: item.createdAt || new Date().toISOString()
+      }));
+  } catch (e) {
+    return [];
+  }
+}
+
+function generateStoryId() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+}
+
+function saveStories() {
+  try {
+    localStorage.setItem(STORY_KEY, JSON.stringify(stories.slice(0, MAX_STORIES)));
+  } catch (e) {}
+}
+
+function persistStory(text, emojis) {
+  const cleanText = String(text || '').trim();
+  if (!cleanText) return;
+  const existing = stories.findIndex(story => story.text === cleanText && story.emojis === emojis);
+  if (existing >= 0) {
+    const item = stories.splice(existing, 1)[0];
+    item.createdAt = new Date().toISOString();
+    stories.unshift(item);
+  } else {
+    stories.unshift({
+      id: generateStoryId(),
+      text: cleanText,
+      emojis,
+      createdAt: new Date().toISOString()
+    });
+  }
+  stories = stories.slice(0, MAX_STORIES);
+  saveStories();
+  renderStories();
+}
+
+function renderStories() {
+  const grid = document.getElementById('storiesGrid');
+  const empty = document.getElementById('emptyStories');
+
+  if (stories.length === 0) {
+    grid.innerHTML = '';
+    empty.classList.remove('hidden');
+    return;
+  }
+
+  empty.classList.add('hidden');
+  grid.innerHTML = stories.map(story => `
+    <div class="gallery-item">
+      <div onclick="loadStory('${story.id}')">
+        <div class="gallery-emojis">${escapeHtml(story.emojis)}</div>
+        <div class="gallery-label">${escapeHtml(story.text)}</div>
+      </div>
+      <div class="story-actions">
+        <button onclick="event.stopPropagation();loadStory('${story.id}')">查看</button>
+        <button onclick="event.stopPropagation();deleteStory('${story.id}')">删除</button>
+      </div>
     </div>
   `).join('');
 }
 
-function loadGallery(text, emojis){
-  document.getElementById('input').value = text;
-  document.getElementById('count').textContent = text.length;
-  showResult(emojis, text);
-  window.scrollTo({top:document.getElementById('result').offsetTop - 20,behavior:'smooth'});
+function loadStory(id) {
+  const story = stories.find(item => item.id === id);
+  if (!story) return;
+  document.getElementById('input').value = story.text;
+  document.getElementById('count').textContent = story.text.length;
+  showResult(story.emojis, story.text, false);
+  window.scrollTo({ top: document.getElementById('result').offsetTop - 20, behavior: 'smooth' });
 }
 
-function quickFill(el){
+function deleteStory(id) {
+  stories = stories.filter(item => item.id !== id);
+  saveStories();
+  renderStories();
+  showToast('故事已删除');
+}
+
+function init() {
+  document.getElementById('totalGenerated').textContent = totalGen;
+  document.getElementById('totalStories').textContent = Object.keys(STORY_PATTERNS).length;
+  document.getElementById('totalEmojiKinds').textContent = ML.getAllEmojiGraphemes().length;
+  renderGallery();
+  renderStories();
+  const textarea = document.getElementById('input');
+  textarea.addEventListener('input', () => {
+    document.getElementById('count').textContent = textarea.value.length;
+  });
+}
+
+function renderGallery() {
+  const grid = document.getElementById('galleryGrid');
+  grid.innerHTML = GALLERY_DATA.map((g, index) => `
+    <div class="gallery-item" onclick="loadGalleryByIndex(${index})">
+      <div class="gallery-emojis">${escapeHtml(g.emojis)}</div>
+      <div class="gallery-label">${escapeHtml(g.text)}</div>
+    </div>
+  `).join('');
+}
+
+function loadGalleryByIndex(index) {
+  const g = GALLERY_DATA[index];
+  if (!g) return;
+  document.getElementById('input').value = g.text;
+  document.getElementById('count').textContent = g.text.length;
+  showResult(g.emojis, g.text, false);
+  window.scrollTo({ top: document.getElementById('result').offsetTop - 20, behavior: 'smooth' });
+}
+
+function loadGallery(text, emojis) {
+  document.getElementById('input').value = text;
+  document.getElementById('count').textContent = text.length;
+  showResult(emojis, text, false);
+  window.scrollTo({ top: document.getElementById('result').offsetTop - 20, behavior: 'smooth' });
+}
+
+function quickFill(el) {
   const text = el.textContent;
   document.getElementById('input').value = text;
   document.getElementById('count').textContent = text.length;
   generate();
 }
 
-function randomGenerate(){
+function randomGenerate() {
   const keys = Object.keys(STORY_PATTERNS);
-  const keys2 = Object.keys(EMOJI_DB);
-  if(Math.random()>0.5 && keys.length>0){
-    const key = keys[Math.floor(Math.random()*keys.length)];
+  if (Math.random() > 0.5 && keys.length > 0) {
+    const key = keys[Math.floor(Math.random() * keys.length)];
     document.getElementById('input').value = key;
     document.getElementById('count').textContent = key.length;
     generate();
@@ -600,220 +467,219 @@ function randomGenerate(){
   }
 }
 
-function generateRandomStory(){
+function generateRandomStory() {
   const templates = [
-    ()=>randomFrom(['🐱','🐶','🦁','🦊','🐼'])+randomFrom(['🚀','✈️','⛵'])+randomFrom(['🌍','🌙','⭐'])+randomFrom(['✨','💫','🌟']),
-    ()=>randomFrom(['👦','👧','👩‍🚀','🧑‍🔬'])+randomFrom(['⚔️','🔫','💣'])+randomFrom(['🐉','👹','👾'])+randomFrom(['🏰','💎','🏆']),
-    ()=>randomFrom(['☀️','🌧️','❄️','🔥'])+randomFrom(['🏙️','🏔️','🌊','🌌'])+randomFrom(['🚶‍♂️','🏃‍♂️','💃'])+randomFrom(['💫','✨','🌟']),
-    ()=>randomFrom(['🍕','🍔','🍣','🍜'])+randomFrom(['😋','🤤','😍','😂'])+randomFrom(['🎉','🎊','✨','💫']),
-    ()=>randomFrom(['💻','📱','🎮','🕹️'])+randomFrom(['💡','⚡','🔌','🔋'])+randomFrom(['🚀','💎','🏆','🎯']),
+    () => randomFrom(['🐱', '🐶', '🦁', '🦊', '🐼']) + randomFrom(['🚀', '✈️', '⛵']) + randomFrom(['🌍', '🌙', '⭐']) + randomFrom(['✨', '💫', '🌟']),
+    () => randomFrom(['👦', '👧', '👩‍🚀', '🧑‍🔬']) + randomFrom(['⚔️', '🔫', '💣']) + randomFrom(['🐉', '👹', '👾']) + randomFrom(['🏰', '💎', '🏆']),
+    () => randomFrom(['☀️', '🌧️', '❄️', '🔥']) + randomFrom(['🏙️', '🏔️', '🌊', '🌌']) + randomFrom(['🚶‍♂️', '🏃‍♂️', '💃']) + randomFrom(['💫', '✨', '🌟']),
+    () => randomFrom(['🍕', '🍔', '🍣', '🍜']) + randomFrom(['😋', '🤤', '😍', '😂']) + randomFrom(['🎉', '🎊', '✨', '💫']),
+    () => randomFrom(['💻', '📱', '🎮', '🕹️']) + randomFrom(['💡', '⚡', '🔌', '🔋']) + randomFrom(['🚀', '💎', '🏆', '🎯'])
   ];
-  const emoji = templates[Math.floor(Math.random()*templates.length)]();
-  const text = randomFrom(['随机奇遇','未知冒险','命运交织','奇妙旅程','意外惊喜']);
+  const emoji = templates[Math.floor(Math.random() * templates.length)]();
+  const text = randomFrom(['随机奇遇', '未知冒险', '命运交织', '奇妙旅程', '意外惊喜']);
   document.getElementById('input').value = text;
-  showResult(emoji, text);
+  document.getElementById('count').textContent = text.length;
+  showResult(emoji, text, true);
 }
 
-function randomFrom(arr){return arr[Math.floor(Math.random()*arr.length)]}
+function randomFrom(arr) {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
 
-function generate(){
+function generate() {
   const text = document.getElementById('input').value.trim();
-  if(!text){showToast('请先输入一个故事或场景');return;}
+  if (!text) {
+    showToast('请先输入一个故事或场景');
+    return;
+  }
 
   const btn = document.getElementById('generateBtn');
   btn.disabled = true;
   document.getElementById('loading').classList.remove('hidden');
   document.getElementById('result').classList.remove('show');
 
-  setTimeout(()=>{
+  setTimeout(() => {
     const emojis = generateEmojis(text);
     document.getElementById('loading').classList.add('hidden');
     btn.disabled = false;
-    showResult(emojis, text);
-  }, 600 + Math.random()*400);
+    showResult(emojis, text, true);
+  }, 300 + Math.random() * 300);
 }
 
-function generateEmojis(text){
-  const lower = text.toLowerCase();
+function generateEmojis(text) {
+  const match = ML.findLongestMatch(STORY_PATTERNS, text);
+  if (match) return match.value;
 
-  for(const [key, val] of Object.entries(STORY_PATTERNS)){
-    if(lower.includes(key.toLowerCase())){
-      return val;
-    }
-  }
-
-  const keywords = extractKeywords(lower);
+  const keywords = extractKeywords(text.toLowerCase());
   const result = [];
   const used = new Set();
 
-  for(const kw of keywords){
+  for (const kw of keywords) {
     const emoji = findEmoji(kw, used);
-    if(emoji){result.push(emoji);used.add(emoji);}
-  }
-
-  if(result.length < 3){
-    const extras = ['✨','💫','🌟','⭐','🎭','🎪'];
-    while(result.length < 6 && result.length < 8){
-      const e = extras[Math.floor(Math.random()*extras.length)];
-      if(!used.has(e)){result.push(e);used.add(e);}
+    if (emoji) {
+      result.push(emoji);
+      used.add(emoji);
     }
   }
 
-  return result.slice(0,6).join('');
+  if (result.length < 3) {
+    const extras = ['✨', '💫', '🌟', '⭐', '🎭', '🎪'];
+    while (result.length < 6) {
+      const e = randomFrom(extras);
+      if (!used.has(e)) {
+        result.push(e);
+        used.add(e);
+      }
+    }
+  }
+
+  return result.slice(0, 6).join('');
 }
 
-function extractKeywords(text){
+function extractKeywords(text) {
   const words = [];
   const patterns = [
-    /猫|猫咪|kitty|cat/i,/狗|狗狗|dog|puppy/i,/龙|dragon/i,
-    /剑|sword|blade|刀|knife/i,/火|fire|flame/i,/水|water|ocean|sea|海/i,
-    /风|wind|storm/i,/电|electric|lightning|⚡|thunder/i,
-    /太空|space|宇宙|universe/i,/星球|planet|star|star/i,
-    /战争|war|battle|fight|战斗/i,/和平|peace/i,
-    /爱情|love|恋爱|heart/i,/悲伤|sad|sorrow|哭泣/i,
-    /开心|happy|joy|欢乐/i,/愤怒|angry|rage/i,
-    /美食|food|吃|eat|cook|做菜/i,/旅行|travel|trip/i,
-    /音乐|music|sing|唱/i,/电影|movie|film|cinema/i,
-    /游戏|game|play/i,/学习|study|learn|学/i,
-    /工作|work|job|office/i,/家|home|house|family|家人/i,
-    /山|mountain|🏔️/i,/森林|forest|wood/i,/沙漠|desert/i,
-    /未来|future|tomorrow/i,/过去|past|history|历史/i,
-    /魔法|magic|spell/i,/科技|tech|technology/i,
-    /机器人|robot|android/i,/AI|人工智能/i,
-    /恐怖|horror|scary|ghost|鬼/i,/搞笑|funny|comedy/i,
-    /英雄|hero|superhero/i,/反派|villain|evil|坏/i,
-    /国王|king|queen|queen/i,/公主|princess|王子|prince/i,
-    /精灵|elf|fairy/i,/怪兽|monster|beast/i,
-    /剑|sword|刀/i,/盾|shield|armor|armor/i,/弓|bow|arrow/i,
-    /魔法|magic|wand|杖/i,/书|book|tome|scroll/i,
-    /宝箱|treasure|chest|gold|金币/i,/门|door|gate|portal/i,
-    /城市|city|town|urban/i,/乡村|rural|village|村/i,
-    /星星|star|月亮|moon|太阳|sun/i,/雨|rain|rainy|雪|snow/i,
-    /花|flower|flower|草|grass/i,/树|tree|forest/i,
-    /鱼|fish|fish|鸟|bird/i,/蛇|snake|蜘蛛|spider/i,
-    /运动|sport|ball|球/i,/比赛|race|competition|竞赛/i,
-    /时间|time|clock|时间/i,/空间|space|维度|dimension/i,
-    /秘密|secret|mystery|神秘/i,/危险|danger|risk/i,
-    /安全|safe|safe|保护|protect/i,/自由|freedom|free/i,
-    /命运|fate|destiny|命/i,/选择|choice|decision/i,
-    /朋友|friend|友谊|友谊/i,/敌人|enemy|rival|对手/i,
-    /父子|father|son|母子|mother/i,/家人|family|家人/i,
-    /夏天|summer|夏天|冬天|winter/i,/春天|spring|春天|秋天|autumn/i,
-    /日出|sunrise|sunset|日落/i,/月亮|moon|月亮|太阳|sun/i,
-    /手|hand|手|脚|foot/i,/眼睛|eye|👁️|耳朵|ear/i,
-    /心|heart|❤️|灵魂|soul|精神/i,
+    /猫|猫咪|kitty|cat/i, /狗|狗狗|dog|puppy/i, /龙|dragon/i,
+    /剑|sword|blade|刀|knife/i, /火|fire|flame/i, /水|water|ocean|sea|海/i,
+    /风|wind|storm/i, /电|electric|lightning|⚡|thunder/i,
+    /太空|space|宇宙|universe/i, /星球|planet|star/i,
+    /战争|war|battle|fight|战斗/i, /和平|peace/i,
+    /爱情|love|恋爱|heart/i, /悲伤|sad|sorrow|哭泣/i,
+    /开心|happy|joy|欢乐/i, /愤怒|angry|rage/i,
+    /美食|food|吃|eat|cook|做菜/i, /旅行|travel|trip/i,
+    /音乐|music|sing|唱/i, /电影|movie|film|cinema/i,
+    /游戏|game|play/i, /学习|study|learn|学/i,
+    /工作|work|job|office/i, /家|home|house|family|家人/i,
+    /山|mountain|🏔️/i, /森林|forest|wood/i, /沙漠|desert/i,
+    /未来|future|tomorrow/i, /过去|past|history|历史/i,
+    /魔法|magic|spell/i, /科技|tech|technology/i,
+    /机器人|robot|android/i, /AI|人工智能/i,
+    /恐怖|horror|scary|ghost|鬼/i, /搞笑|funny|comedy/i,
+    /英雄|hero|superhero/i, /反派|villain|evil|坏/i,
+    /国王|king|queen/i, /公主|princess|王子|prince/i,
+    /精灵|elf|fairy/i, /怪兽|monster|beast/i,
+    /盾|shield|armor/i, /弓|bow|arrow/i,
+    /魔法|magic|wand|杖/i, /书|book|tome|scroll/i,
+    /宝箱|treasure|chest|gold|金币/i, /门|door|gate|portal/i,
+    /城市|city|town|urban/i, /乡村|rural|village|村/i,
+    /星星|star|月亮|moon|太阳|sun/i, /雨|rain|rainy|雪|snow/i,
+    /花|flower|草|grass/i, /树|tree|forest/i,
+    /鱼|fish|鸟|bird/i, /蛇|snake|蜘蛛|spider/i,
+    /运动|sport|ball|球/i, /比赛|race|competition|竞赛/i,
+    /时间|time|clock/i, /空间|space|维度|dimension/i,
+    /秘密|secret|mystery|神秘/i, /危险|danger|risk/i,
+    /安全|safe|保护|protect/i, /自由|freedom|free/i,
+    /命运|fate|destiny|命/i, /选择|choice|decision/i,
+    /朋友|friend|友谊/i, /敌人|enemy|rival|对手/i,
+    /父子|father|son|母子|mother/i, /家人|family/i,
+    /夏天|summer|冬天|winter/i, /春天|spring|秋天|autumn/i,
+    /日出|sunrise|sunset|日落/i, /月亮|moon|太阳|sun/i,
+    /手|hand|脚|foot/i, /眼睛|eye|👁️|耳朵|ear/i,
+    /心|heart|❤️|灵魂|soul|精神/i
   ];
 
-  for(const p of patterns){
+  for (const p of patterns) {
     const match = text.match(p);
-    if(match){
-      words.push(match[0].toLowerCase());
-    }
+    if (match) words.push(match[0].toLowerCase());
   }
 
-  if(words.length === 0){
-    const chars = text.split('');
-    for(const c of chars){
-      if(c.match(/[\u4e00-\u9fff]/)){
-        words.push(c);
-      }
+  if (words.length === 0) {
+    for (const c of ML.splitGraphemes(text)) {
+      if (/[\u4e00-\u9fff]/.test(c)) words.push(c);
     }
   }
 
   return words;
 }
 
-function findEmoji(keyword, used){
-  const mapping = {
-    '猫':'🐱','狗狗':'🐕','狗':'🐕','龙':'🐉',
-    '剑':'⚔️','火':'🔥','水':'💧','风':'🌪️','电':'⚡',
-    '太空':'🌌','宇宙':'🌌','星球':'🪐','星星':'⭐',
-    '战争':'⚔️','战斗':'💥','和平':'🕊️',
-    '爱情':'💕','恋爱':'💕','悲伤':'😢','哭泣':'😭',
-    '开心':'😄','欢乐':'🎉','愤怒':'😡',
-    '美食':'🍕','吃':'😋','做菜':'👨‍🍳','cook':'👨‍🍳',
-    '旅行':'✈️','music':'🎵','音乐':'🎵','唱歌':'🎤',
-    '电影':'🎬','游戏':'🎮','学习':'📚','工作':'💼',
-    '家':'🏠','家人':'👨‍👩‍👧‍👦','mountain':'🏔️','山':'🏔️',
-    '森林':'🌲','沙漠':'🏜️',
-    '未来':'🚀','过去':'📜','魔法':'✨','科技':'💡',
-    '机器人':'🤖','人工智能':'🤖','ai':'🤖',
-    '恐怖':'👻','搞笑':'😂',
-    '英雄':'🦸','反派':'😈',
-    '国王':'👑','公主':'👸','王子':'🤴',
-    '精灵':'🧚','怪兽':'👹',
-    '盾':'🛡️','弓':'🏹','书':'📖',
-    '宝箱':'💎','金币':'💰',
-    '门':'🚪','portal':'🌀',
-    '城市':'🏙️','乡村':'🏘️',
-    '月亮':'🌙','太阳':'☀️',
-    '雨':'🌧️','雪':'❄️',
-    '花':'🌸','草':'🌿','树':'🌳',
-    '鱼':'🐠','鸟':'🐦','蛇':'🐍',
-    '运动':'⚽','比赛':'🏆','球':'⚽',
-    '时间':'⏰','空间':'🌌',
-    '秘密':'🔮','危险':'⚠️',
-    '安全':'🛡️','自由':'🕊️',
-    '命运':'💫','选择':'🤔',
-    '朋友':'🤝','敌人':'⚔️',
-    '夏天':'☀️','冬天':'❄️','春天':'🌸','秋天':'🍂',
-    '日出':'🌅','日落':'🌇',
-    '眼睛':'👁️','耳朵':'👂',
-    '心':'❤️','灵魂':'💫',
-    '手':'✋','脚':'🦶',
-    '战争':'⚔️','战争':'💥',
-    '拳':'👊','力量':'💪',
-    '船':'🚢','飞机':'✈️',
-    '车':'🚗','火箭':'🚀',
-    '鸟':'🐦','蝴蝶':'🦋',
-    '猫':'🐱','狗':'🐕','鱼':'🐟',
-    '怪物':'👹','僵尸':'🧟','鬼':'👻',
-    '死':'💀','生':'🌱',
-    '天':'☀️','地':'🌍',
-    '金':'🥇','银':'🥈','铜':'🥉',
-    '星':'⭐','月':'🌙','日':'☀️',
-    '灯':'💡','光':'✨','暗':'🌑',
-    '甜':'🍬','苦':'😖',
-    '红':'❤️','蓝':'💙','绿':'💚','黄':'💛','紫':'💜',
-    '大':'🦁','小':'🐁',
-    '快':'⚡','慢':'🐢',
-    '高':'🏔️','低':'🌊',
-    '新':'🆕','旧':'📜',
-    '真':'✅','假':'❌',
-    '美':'😍','丑':'👹',
-    '善':'😇','恶':'😈',
-    '爱':'❤️','恨':'💔',
-    '笑':'😂','哭':'😭',
-    '吃':'🍽️','喝':'☕','睡':'😴',
-    '走':'🚶','跑':'🏃','飞':'✈️',
-    '打':'👊','杀':'💀','救':'🦸',
-    '生':'🌱','死':'💀',
-    '始':'🏁','终':'🏆',
-    '开':'🔓','关':'🔒',
-    '进':'➡️','退':'⬅️',
-    '上':'⬆️','下':'⬇️',
-    '左':'⬅️','右':'➡️',
-    '前':'➡️','后':'⬅️',
-    '东':'🌅','西':'🌇','南':'☀️','北':'❄️',
-  };
+const EMOJI_MAPPING = {
+  '猫':'🐱','狗狗':'🐕','狗':'🐕','龙':'🐉',
+  '剑':'⚔️','火':'🔥','水':'💧','风':'🌪️','电':'⚡',
+  '太空':'🌌','宇宙':'🌌','星球':'🪐','星星':'⭐',
+  '战争':'⚔️','战斗':'💥','和平':'🕊️',
+  '爱情':'💕','恋爱':'💕','悲伤':'😢','哭泣':'😭',
+  '开心':'😄','欢乐':'🎉','愤怒':'😡',
+  '美食':'🍕','吃':'😋','做菜':'👨‍🍳','cook':'👨‍🍳',
+  '旅行':'✈️','music':'🎵','音乐':'🎵','唱歌':'🎤',
+  '电影':'🎬','游戏':'🎮','学习':'📚','工作':'💼',
+  '家':'🏠','家人':'👨‍👩‍👧‍👦','mountain':'🏔️','山':'🏔️',
+  '森林':'🌲','沙漠':'🏜️',
+  '未来':'🚀','过去':'📜','魔法':'✨','科技':'💡',
+  '机器人':'🤖','人工智能':'🤖','ai':'🤖',
+  '恐怖':'👻','搞笑':'😂',
+  '英雄':'🦸','反派':'😈',
+  '国王':'👑','公主':'👸','王子':'🤴',
+  '精灵':'🧚','怪兽':'👹',
+  '盾':'🛡️','弓':'🏹','书':'📖',
+  '宝箱':'💎','金币':'💰',
+  '门':'🚪','portal':'🌀',
+  '城市':'🏙️','乡村':'🏘️',
+  '月亮':'🌙','太阳':'☀️',
+  '雨':'🌧️','雪':'❄️',
+  '花':'🌸','草':'🌿','树':'🌳',
+  '鱼':'🐠','鸟':'🐦','蛇':'🐍',
+  '运动':'⚽','比赛':'🏆','球':'⚽',
+  '时间':'⏰','空间':'🌌',
+  '秘密':'🔮','危险':'⚠️',
+  '安全':'🛡️','自由':'🕊️',
+  '命运':'💫','选择':'🤔',
+  '朋友':'🤝','敌人':'⚔️',
+  '夏天':'☀️','冬天':'❄️','春天':'🌸','秋天':'🍂',
+  '日出':'🌅','日落':'🌇',
+  '眼睛':'👁️','耳朵':'👂',
+  '心':'❤️','灵魂':'💫',
+  '手':'✋','脚':'🦶',
+  '拳':'👊','力量':'💪',
+  '船':'🚢','飞机':'✈️',
+  '车':'🚗','火箭':'🚀',
+  '蝴蝶':'🦋',
+  '怪物':'👹','僵尸':'🧟','鬼':'👻',
+  '死':'💀','生':'🌱',
+  '天':'☀️','地':'🌍',
+  '金':'🥇','银':'🥈','铜':'🥉',
+  '星':'⭐','月':'🌙','日':'☀️',
+  '灯':'💡','光':'✨','暗':'🌑',
+  '甜':'🍬','苦':'😖',
+  '红':'❤️','蓝':'💙','绿':'💚','黄':'💛','紫':'💜',
+  '大':'🦁','小':'🐁',
+  '快':'⚡','慢':'🐢',
+  '高':'🏔️','低':'🌊',
+  '新':'🆕','旧':'📜',
+  '真':'✅','假':'❌',
+  '美':'😍','丑':'👹',
+  '善':'😇','恶':'😈',
+  '爱':'❤️','恨':'💔',
+  '笑':'😂','哭':'😭',
+  '喝':'☕','睡':'😴',
+  '走':'🚶','跑':'🏃','飞':'✈️',
+  '打':'👊','杀':'💀','救':'🦸',
+  '始':'🏁','终':'🏆',
+  '开':'🔓','关':'🔒',
+  '进':'➡️','退':'⬅️',
+  '上':'⬆️','下':'⬇️',
+  '左':'⬅️','右':'➡️',
+  '前':'➡️','后':'⬅️',
+  '东':'🌅','西':'🌇','南':'☀️','北':'❄️'
+};
 
-  for(const [key, emoji] of Object.entries(mapping)){
-    if(keyword.includes(key) && !used.has(emoji)){
-      return emoji;
-    }
+const MAPPING_ENTRIES = Object.entries(EMOJI_MAPPING).sort((a, b) => b[0].length - a[0].length);
+
+function findEmoji(keyword, used) {
+  for (const [key, emoji] of MAPPING_ENTRIES) {
+    if (keyword.includes(key) && !used.has(emoji)) return emoji;
   }
 
-  const allEmojis = Object.values(EMOJI_DB).flatMap(cat=>Object.values(cat).join('').split(''));
-  const available = allEmojis.filter(e=>!used.has(e) && e.trim());
-  return available.length > 0 ? available[Math.floor(Math.random()*available.length)] : null;
+  const available = ML.getAllEmojiGraphemes().filter(e => !used.has(e) && e.trim());
+  return available.length > 0 ? randomFrom(available) : null;
 }
 
-function showResult(emojis, text){
+function showResult(emojis, text, persist) {
   currentEmojis = emojis;
+  currentStoryText = text;
   const container = document.getElementById('cardEmojis');
   container.innerHTML = '';
 
-  const emojiArr = [...emojis].filter(e=>e.trim());
+  const emojiArr = ML.splitGraphemes(emojis).filter(e => e.trim());
   emojiArr.forEach((e, i) => {
     const span = document.createElement('span');
     span.className = 'emoji';
@@ -829,53 +695,69 @@ function showResult(emojis, text){
   result.classList.add('show');
   result.style.display = 'block';
 
-  totalGen++;
-  localStorage.setItem('ec_count', totalGen);
-  document.getElementById('totalGenerated').textContent = totalGen;
+  if (persist !== false) {
+    persistStory(text, emojis);
+    totalGen++;
+    localStorage.setItem('ec_count', totalGen);
+    document.getElementById('totalGenerated').textContent = totalGen;
+  }
 }
 
-function downloadCard(){
-  const card = document.getElementById('storyCard');
+function downloadCard() {
   const canvas = document.getElementById('canvas');
   const ctx = canvas.getContext('2d');
   const w = 720, h = 480;
-  canvas.width = w; canvas.height = h;
+  canvas.width = w;
+  canvas.height = h;
 
-  const grad = ctx.createLinearGradient(0,0,w,h);
-  grad.addColorStop(0,'#1a1a2e');grad.addColorStop(0.5,'#16213e');grad.addColorStop(1,'#0f3460');
+  const grad = ctx.createLinearGradient(0, 0, w, h);
+  grad.addColorStop(0, '#1a1a2e');
+  grad.addColorStop(0.5, '#16213e');
+  grad.addColorStop(1, '#0f3460');
   ctx.fillStyle = grad;
-  ctx.fillRect(0,0,w,h);
+  ctx.fillRect(0, 0, w, h);
 
   ctx.fillStyle = 'rgba(108,92,231,0.05)';
-  for(let i=0;i<3;i++){
+  for (let i = 0; i < 3; i++) {
     ctx.beginPath();
-    ctx.arc(Math.random()*w,Math.random()*h,100+Math.random()*100,0,Math.PI*2);
+    ctx.arc(Math.random() * w, Math.random() * h, 100 + Math.random() * 100, 0, Math.PI * 2);
     ctx.fill();
   }
 
   const title = document.getElementById('cardTitle').textContent;
-  const emojis = currentEmojis;
-  const emojiArr = [...emojis].filter(e=>e.trim());
+  const emojiArr = ML.splitGraphemes(currentEmojis).filter(e => e.trim());
 
   ctx.textAlign = 'center';
   ctx.fillStyle = 'rgba(255,255,255,0.15)';
   ctx.font = 'bold 14px Inter, system-ui, sans-serif';
-  ctx.letterSpacing = '2px';
-  ctx.fillText('E M O J I  C I N E M A', w/2, 50);
+  ctx.fillText('E M O J I  C I N E M A', w / 2, 50);
 
-  ctx.font = '48px serif';
-  const startX = w/2 - (emojiArr.length * 35)/2;
-  emojiArr.forEach((e,i)=>{
-    ctx.fillText(e, startX + i*35 + 17, h/2 - 20);
+  const emojiFont = '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",serif';
+  let fontSize = 56;
+  const gap = 12;
+  ctx.font = `${fontSize}px ${emojiFont}`;
+  let totalWidth = emojiArr.reduce((sum, e) => sum + ctx.measureText(e).width, 0) + gap * Math.max(0, emojiArr.length - 1);
+  const maxWidth = w - 80;
+  if (totalWidth > maxWidth) {
+    fontSize = Math.max(22, Math.floor(fontSize * (maxWidth / totalWidth)));
+    ctx.font = `${fontSize}px ${emojiFont}`;
+    totalWidth = emojiArr.reduce((sum, e) => sum + ctx.measureText(e).width, 0) + gap * Math.max(0, emojiArr.length - 1);
+  }
+
+  let x = w / 2 - totalWidth / 2;
+  emojiArr.forEach(e => {
+    const emojiWidth = ctx.measureText(e).width;
+    ctx.fillText(e, x + emojiWidth / 2, h / 2 - 20);
+    x += emojiWidth + gap;
   });
 
   ctx.font = 'italic 16px Inter, system-ui, sans-serif';
   ctx.fillStyle = 'rgba(255,255,255,0.6)';
-  ctx.fillText(title, w/2, h/2 + 40);
+  ctx.fillText(title, w / 2, h / 2 + 40);
 
   ctx.fillStyle = 'rgba(255,255,255,0.1)';
   ctx.font = '11px Inter, system-ui, sans-serif';
-  ctx.fillText('emoji-cinema.vercel.app', w/2, h - 30);
+  ctx.fillText('emoji-cinema.vercel.app', w / 2, h - 30);
 
   const link = document.createElement('a');
   link.download = 'emoji-cinema-' + Date.now() + '.png';
@@ -884,28 +766,52 @@ function downloadCard(){
   showToast('卡片已下载！');
 }
 
-function shareTwitter(){
+function shareStory() {
+  const text = currentStoryText || document.getElementById('cardTitle').textContent;
+  const shareText = `${currentEmojis}\n\n— 「${text}」\n\n用 Emoji Cinema 生成你的 Emoji 电影 ✨`;
+  if (navigator.share) {
+    navigator.share({ title: 'Emoji Cinema', text: shareText, url: location.href }).then(() => {
+      showToast('已调用系统分享');
+    }).catch(err => {
+      if (err && err.name === 'AbortError') return;
+      copyText(shareText);
+    });
+  } else {
+    copyText(shareText);
+  }
+}
+
+function copyText(text) {
+  navigator.clipboard.writeText(text).then(() => {
+    showToast('内容已复制，可粘贴分享');
+  }).catch(() => {
+    showToast('分享失败，请手动复制');
+  });
+}
+
+function shareTwitter() {
   const text = `${currentEmojis}\n\n— 「${document.getElementById('cardTitle').textContent}」\n\n用 Emoji Cinema 生成你的 Emoji 电影 ✨`;
   const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
   window.open(url, '_blank');
 }
 
-function copyEmojis(){
-  navigator.clipboard.writeText(currentEmojis).then(()=>{
+function copyEmojis() {
+  navigator.clipboard.writeText(currentEmojis).then(() => {
     showToast('Emoji 已复制到剪贴板！');
-  }).catch(()=>{
+  }).catch(() => {
     showToast('复制失败，请手动选择');
   });
 }
 
-function showToast(msg){
+function showToast(msg) {
   const t = document.getElementById('toast');
   t.textContent = msg;
   t.classList.add('show');
-  setTimeout(()=>t.classList.remove('show'), 2500);
+  setTimeout(() => t.classList.remove('show'), 2500);
 }
 
 init();
 </script>
+
 </body>
 </html>
